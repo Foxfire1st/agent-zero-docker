@@ -3,7 +3,7 @@ services:
     container_name: agent-zero-cuda
     image: agent-zero-cuda  
     build: 
-      dockerfile: dockerfile
+      dockerfile: dockerfile_nvidia
       context: .
       args:
         INSTALL_TYPE: all
