@@ -1,0 +1,3 @@
+# This file ensures the agent-zero-config directory is tracked by git
+# You can add your own config files here, but they will be ignored by git
+# except for this .gitkeep file
