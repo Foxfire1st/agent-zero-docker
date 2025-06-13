@@ -5,7 +5,7 @@ This repository contains a complete Docker setup for running [Agent Zero](https:
 ## 🚀 Features
 
 - **GPU Support**: Full NVIDIA CUDA or AMD ROCm GPU acceleration for AI models
-- **Persistent Configuration**: Settings and data persist across container rebuilds
+- **Complete System Persistence**: Entire system state persists across container rebuilds using Docker volumes
 - **SSH Access**: Internal SSH for agent code execution
 - **Remote Function Calls (RFC)**: Proper SSH configuration for agent self-interaction
 - **Web Interface**: Clean web UI accessible from host machine
@@ -13,12 +13,14 @@ This repository contains a complete Docker setup for running [Agent Zero](https:
 ## 📋 Prerequisites
 
 ### For NVIDIA GPU Support
+
 - Docker and Docker Compose installed
 - NVIDIA Drivers installed
 - NVIDIA Container Toolkit installed
 - Git (for version control)
 
 ### For AMD GPU Support
+
 - Docker and Docker Compose installed
 - AMD ROCm drivers installed
 - Git (for version control)
@@ -28,78 +30,65 @@ This repository contains a complete Docker setup for running [Agent Zero](https:
 ### Docker Compose Services
 
 Choose the appropriate docker-compose file for your GPU:
+
 - **NVIDIA**: Use `docker-compose_nvidia.yaml`
 - **AMD**: Use `docker-compose_amd.yaml`
 
 Both configurations define:
 
-- **Ports**: 
+- **Ports**:
   - `55080:5000` - Web UI access
   - `55022:22` - SSH access (internal use)
 - **GPU Access**: Full GPU allocation (NVIDIA or AMD)
-- **Persistent Volumes**: Configuration, logs, and environment variables
+- **Persistent Storage**: Complete system persistence using Docker named volumes
 
 ### Environment Variables
 
 Key environment variables in both docker-compose files:
+
 - `HOST=0.0.0.0` - Bind to all interfaces
 - `PORT=5000` - Internal HTTP port
 - `BASE_URL=http://localhost:5000` - Internal base URL for RFC
 
 ## 🚀 Quick Start
 
-**🚨 CRITICAL: Create Required Files and Directories**
-
-Before running Docker, you MUST create the required directories and the `.env` file:
-
 1. **Clone this repository**:
+
    ```bash
    git clone <your-repo-url>
    cd agent-zero-docker
    ```
 
-2. **Create required directories and files**:
-   ```bash
-   # Create required directories
-   mkdir -p agent-zero-env agent-zero-logs agent-zero-config
-   
-   # Create the .env FILE (not directory) - this is critical!
-   touch agent-zero-env/.env
-   ```
-
-**⚠️ Common Error**: If you accidentally mount the `agent-zero-env` directory to `/root/agent-zero/.env` instead of the `.env` file, you'll get:
-```
-IsADirectoryError: [Errno 21] Is a directory: '/root/agent-zero/.env'
-```
-
-**✅ Correct volume mount**: `./agent-zero-env/.env:/root/agent-zero/.env` (file to file)  
-**❌ Incorrect volume mount**: `./agent-zero-env:/root/agent-zero/.env` (directory to file)
-
-3. **Choose your GPU type and build the container**:
+2. **Choose your GPU type and build the container**:
 
    **For NVIDIA GPUs:**
+
    ```bash
    docker compose -f docker-compose_nvidia.yaml up --build
    ```
 
    **For AMD GPUs:**
+
    ```bash
    docker compose -f docker-compose_amd.yaml up --build
    ```
 
-4. **Access the web interface**:
+3. **Access the web interface**:
    Open your browser and navigate to:
+
    ```
    http://localhost:55080
    ```
 
-5. **Configure Agent Zero**:
+4. **Configure Agent Zero**:
    - Set up your API keys in the Settings
    - Configure RFC settings:
      - RFC Destination URL: `http://localhost`
      - RFC Password: Choose a secure password
      - RFC HTTP port: `5000`
      - RFC SSH port: `22`
+
+**Note**: All your configuration, installed packages, and system changes will automatically persist using Docker volumes!
 
 ## ⚙️ Detailed Setup
 
@@ -108,11 +97,20 @@ IsADirectoryError: [Errno 21] Is a directory: '/root/agent-zero/.env'
 1. **Access Settings**: Click the settings icon in the web interface
 2. **Configure Models**: Set up your preferred AI model providers (OpenAI, Ollama, etc.)
 3. **Set RFC Password**: This password enables agent self-interaction via SSH
-4. **Save Settings**: All settings will persist in the `agent-zero-config` volume
+4. **Save Settings**: All settings will persist automatically in the Docker volume
+
+### System Persistence
+
+All changes are automatically persisted using Docker named volumes:
+
+- **Location**: `/var/lib/docker/volumes/agent-zero-docker_agent-zero-root/_data`
+- **What's persisted**: Complete `/root` directory including conda environment, installed packages, configuration files, agent-zero code, and any modifications you make
+- **Access**: You can browse the persisted data with `ls -la /var/lib/docker/volumes/agent-zero-docker_agent-zero-root/_data`
 
 ### SSH Configuration
 
 The container automatically configures SSH with:
+
 - Root user enabled
 - Password authentication enabled
 - Host key verification disabled for localhost
@@ -121,6 +119,7 @@ The container automatically configures SSH with:
 ### GPU Verification
 
 **For NVIDIA GPUs:**
+
 ```bash
 # Execute into the running container
 docker exec -it agent-zero-cuda bash
@@ -133,6 +132,7 @@ python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
 ```
 
 **For AMD GPUs:**
+
 ```bash
 # Execute into the running container
 docker exec -it agent-zero-amd bash
@@ -155,53 +155,53 @@ python -c "import torch; print(f'ROCm available: {torch.cuda.is_available()}')"
 
 ### Common Issues
 
-1. **IsADirectoryError: [Errno 21] Is a directory: '/root/agent-zero/.env'**:
-   
-   **Cause**: The `.env` file wasn't created properly, or you're mounting a directory instead of a file.
-   
+1. **Container exits with "conda: command not found"**:
+
+   **Cause**: This usually happens if there's a volume mounting issue or the container wasn't built properly.
+
    **Solution**:
+
    ```bash
-   # Ensure the file exists as a FILE, not directory
-   touch agent-zero-env/.env
-   
-   # Verify it's a file, not a directory
-   ls -la agent-zero-env/
-   # Should show: -rw-r--r-- 1 user user size date .env
-   
-   # Check your docker-compose file has the CORRECT mount:
-   # ✅ Correct: - ./agent-zero-env/.env:/root/agent-zero/.env
-   # ❌ Wrong:   - ./agent-zero-env:/root/agent-zero/.env
+   # Stop and rebuild completely
+   docker compose -f docker-compose_amd.yaml down  # or nvidia
+   docker compose -f docker-compose_amd.yaml up --build
    ```
 
 2. **Authentication Failed (SSH)**:
+
    - Ensure RFC password is set in the web interface
    - Check that SSH service is running in the container
 
 3. **Bad Request Errors in Logs**:
+
    - These are harmless SSL handshake attempts to HTTP server
    - Always use `http://` (not `https://`) when accessing the interface
 
 4. **GPU Not Available (NVIDIA)**:
+
    - Verify NVIDIA Docker runtime installation
    - Check GPU drivers on host system
    - Ensure NVIDIA Container Toolkit is properly installed
 
 5. **GPU Not Available (AMD)**:
+
    - Verify ROCm drivers are installed on host system
    - Check that `/dev/kfd` and `/dev/dri` devices are accessible
    - Ensure user is in the `video` group on host system
 
 6. **Configuration Not Persisting**:
-   - Verify volume mounts in docker-compose file
-   - Check permissions on host directories
-   - Ensure `.env` file exists and is not a directory
 
-7. **First Time Boot**
-Note that on the first time Agent Zero is indexing and so it might take a long time until it responds the first time.
+   - Docker volumes should handle persistence automatically
+   - If issues persist, check Docker volume status: `docker volume ls`
+   - Inspect volume location: `docker volume inspect agent-zero-docker_agent-zero-root`
+
+7. **First Time Boot**:
+   Note that on the first time Agent Zero is indexing and so it might take a long time until it responds the first time.
 
 ### Log Access
 
 View container logs:
+
 ```bash
 # Follow logs in real-time
 docker compose logs -f
@@ -210,17 +210,12 @@ docker compose logs -f
 docker compose logs app
 ```
 
-Access persistent logs:
-```bash
-# HTML logs are saved in agent-zero-logs/
-ls -la agent-zero-logs/
-```
-
 ### Container Access
 
 Execute commands in the running container:
 
 **For NVIDIA containers:**
+
 ```bash
 # Get shell access
 docker exec -it agent-zero-cuda bash
@@ -230,6 +225,7 @@ docker exec -it agent-zero-cuda ssh root@localhost -p 22
 ```
 
 **For AMD containers:**
+
 ```bash
 # Get shell access
 docker exec -it agent-zero-amd bash
@@ -245,6 +241,7 @@ docker exec -it agent-zero-amd ssh root@localhost -p 22
 When making changes to the Dockerfile:
 
 **For NVIDIA:**
+
 ```bash
 # Stop and rebuild
 docker compose -f docker-compose_nvidia.yaml down
@@ -252,6 +249,7 @@ docker compose -f docker-compose_nvidia.yaml up --build
 ```
 
 **For AMD:**
+
 ```bash
 # Stop and rebuild
 docker compose -f docker-compose_amd.yaml down
@@ -263,6 +261,7 @@ docker compose -f docker-compose_amd.yaml up --build
 To update to the latest Agent Zero version:
 
 **For NVIDIA:**
+
 ```bash
 # Rebuild with fresh clone
 docker compose -f docker-compose_nvidia.yaml down
@@ -271,6 +270,7 @@ docker compose -f docker-compose_nvidia.yaml up
 ```
 
 **For AMD:**
+
 ```bash
 # Rebuild with fresh clone
 docker compose -f docker-compose_amd.yaml down
@@ -281,12 +281,30 @@ docker compose -f docker-compose_amd.yaml up
 ### Backup Configuration
 
 Backup your persistent data:
-```bash
-# Create backup
-tar -czf agent-zero-backup.tar.gz agent-zero-config agent-zero-env agent-zero-logs
 
-# Restore backup
-tar -xzf agent-zero-backup.tar.gz
+```bash
+# Create backup of the entire persisted system
+tar -czf agent-zero-backup.tar.gz -C /var/lib/docker/volumes/agent-zero-docker_agent-zero-root/_data .
+
+# Alternative: Backup using Docker volume
+docker run --rm -v agent-zero-docker_agent-zero-root:/data -v $(pwd):/backup ubuntu tar czf /backup/agent-zero-backup.tar.gz -C /data .
+```
+
+Restore backup:
+
+```bash
+# Stop container first
+docker compose -f docker-compose_amd.yaml down  # or nvidia
+
+# Remove old volume
+docker volume rm agent-zero-docker_agent-zero-root
+
+# Recreate and restore
+docker volume create agent-zero-docker_agent-zero-root
+docker run --rm -v agent-zero-docker_agent-zero-root:/data -v $(pwd):/backup ubuntu tar xzf /backup/agent-zero-backup.tar.gz -C /data
+
+# Start container
+docker compose -f docker-compose_amd.yaml up  # or nvidia
 ```
 
 ## 📚 Additional Resources
@@ -313,14 +331,19 @@ This project follows the same license as Agent Zero. See the [Agent Zero reposit
 
 If you encounter issues:
 
-1. **First, verify your setup**:
+1. **Check Docker volume status**:
+
    ```bash
-   # Check if .env file exists as a FILE (not directory)
-   ls -la agent-zero-env/.env
-   
-   # Should show file details, not "No such file or directory"
-   # If it shows as a directory, you have the wrong mount configuration
+   # List volumes
+   docker volume ls | grep agent-zero
+
+   # Inspect volume location and details
+   docker volume inspect agent-zero-docker_agent-zero-root
+
+   # Browse persisted data
+   ls -la /var/lib/docker/volumes/agent-zero-docker_agent-zero-root/_data
    ```
+
 2. Check the troubleshooting section above
 3. Review Agent Zero's official documentation
 4. Check Docker and GPU driver installation (NVIDIA Container Toolkit or ROCm)

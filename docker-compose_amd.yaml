@@ -23,4 +23,7 @@ services:
       - PORT=5000
       - BASE_URL=http://localhost:5000
     volumes:
-      - ./agent-zero-root:/root
+      - agent-zero-root:/root
+
+volumes:
+  agent-zero-root:
