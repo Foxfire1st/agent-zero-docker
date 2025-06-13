@@ -15,6 +15,7 @@ services:
     ports:
       - "55080:5000"
       - "55022:22"
+      - "55510:55510"
     security_opt:
       - seccomp:unconfined
     environment:
