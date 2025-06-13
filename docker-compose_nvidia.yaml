@@ -1,8 +1,8 @@
 services:
   app:
     container_name: agent-zero-cuda
-    image: agent-zero-cuda  
-    build: 
+    image: agent-zero-cuda
+    build:
       dockerfile: dockerfile_nvidia
       context: .
       args:
@@ -13,7 +13,7 @@ services:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [gpu]    
+              capabilities: [gpu]
     ports:
       - "55080:5000"
       - "55022:22"
@@ -24,6 +24,6 @@ services:
       - PORT=5000
       - BASE_URL=http://localhost:5000
     volumes:
-    - ./agent-zero-logs:/root/agent-zero/logs
-    - ./agent-zero-config:/root/agent-zero/tmp
-    - ./agent-zero-env/.env:/root/agent-zero/.env
+      - ./agent-zero-logs:/root/agent-zero/logs
+      - ./agent-zero-config:/root/agent-zero/tmp
+      - ./agent-zero-env/.env:/root/agent-zero/.env

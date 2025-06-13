@@ -1,8 +1,8 @@
 services:
   app:
     container_name: agent-zero-amd
-    image: agent-zero-amd  
-    build: 
+    image: agent-zero-amd
+    build:
       dockerfile: dockerfile_amd
       context: .
       args:
@@ -22,6 +22,6 @@ services:
       - PORT=5000
       - BASE_URL=http://localhost:5000
     volumes:
-    - ./agent-zero-logs:/root/agent-zero/logs
-    - ./agent-zero-config:/root/agent-zero/tmp
-    - ./agent-zero-env/.env:/root/agent-zero/.env
+      - ./agent-zero-logs:/root/agent-zero/logs
+      - ./agent-zero-config:/root/agent-zero/tmp
+      - ./agent-zero-env/.env:/root/agent-zero/.env
