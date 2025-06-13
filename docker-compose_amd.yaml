@@ -1,19 +1,17 @@
 services:
   app:
-    container_name: agent-zero-cuda
-    image: agent-zero-cuda  
+    container_name: agent-zero-amd
+    image: agent-zero-amd  
     build: 
-      dockerfile: dockerfile_nvidia
+      dockerfile: dockerfile_amd
       context: .
       args:
         INSTALL_TYPE: all
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]    
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
     ports:
       - "55080:5000"
       - "55022:22"

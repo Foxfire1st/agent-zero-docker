@@ -1,10 +1,10 @@
-# Agent Zero Docker Setup with CUDA Support
+# Agent Zero Docker Setup with GPU Support
 
-This repository contains a complete Docker setup for running [Agent Zero](https://github.com/frdel/agent-zero) with NVIDIA CUDA GPU support in a containerized environment.
+This repository contains a complete Docker setup for running [Agent Zero](https://github.com/frdel/agent-zero) with GPU support (NVIDIA CUDA or AMD ROCm) in a containerized environment.
 
 ## 🚀 Features
 
-- **CUDA GPU Support**: Full NVIDIA GPU acceleration for AI models
+- **GPU Support**: Full NVIDIA CUDA or AMD ROCm GPU acceleration for AI models
 - **Persistent Configuration**: Settings and data persist across container rebuilds
 - **SSH Access**: Internal SSH for agent code execution
 - **Remote Function Calls (RFC)**: Proper SSH configuration for agent self-interaction
@@ -12,57 +12,45 @@ This repository contains a complete Docker setup for running [Agent Zero](https:
 
 ## 📋 Prerequisites
 
+### For NVIDIA GPU Support
 - Docker and Docker Compose installed
-- NVIDIA Docker runtime (nvidia-docker2)
-- NVIDIA GPU with compatible drivers
+- NVIDIA Drivers installed
+- NVIDIA Container Toolkit installed
 - Git (for version control)
 
-### Installing NVIDIA Docker Support
-
-```bash
-# Install nvidia-docker2
-sudo apt-get update
-sudo apt-get install -y nvidia-docker2
-
-# Restart Docker daemon
-sudo systemctl restart docker
-
-# Test NVIDIA Docker
-docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
-```
-
-## 🏗️ Project Structure
-
-```
-agent-zero-docker/
-├── dockerfile                 # Custom Dockerfile with CUDA and Agent Zero
-├── docker-compose.yaml       # Docker Compose configuration
-├── agent-zero-config/        # Persistent settings and chat history
-├── agent-zero-logs/          # Application logs
-├── agent-zero-env            # Environment variables (.env file)
-└── README.md                 # This file
-```
+### For AMD GPU Support
+- Docker and Docker Compose installed
+- AMD ROCm drivers installed
+- Git (for version control)
 
 ## 🔧 Configuration
 
 ### Docker Compose Services
 
-The `docker-compose.yaml` defines:
+Choose the appropriate docker-compose file for your GPU:
+- **NVIDIA**: Use `docker-compose_nvidia.yaml`
+- **AMD**: Use `docker-compose_amd.yaml`
+
+Both configurations define:
 
 - **Ports**: 
   - `55080:5000` - Web UI access
   - `55022:22` - SSH access (internal use)
-- **GPU Access**: Full NVIDIA GPU allocation
+- **GPU Access**: Full GPU allocation (NVIDIA or AMD)
 - **Persistent Volumes**: Configuration, logs, and environment variables
 
 ### Environment Variables
 
-Key environment variables in `docker-compose.yaml`:
+Key environment variables in both docker-compose files:
 - `HOST=0.0.0.0` - Bind to all interfaces
 - `PORT=5000` - Internal HTTP port
 - `BASE_URL=http://localhost:5000` - Internal base URL for RFC
 
 ## 🚀 Quick Start
+
+**🚨 CRITICAL: Create Required Files and Directories**
+
+Before running Docker, you MUST create the required directories and the `.env` file:
 
 1. **Clone this repository**:
    ```bash
@@ -70,18 +58,42 @@ Key environment variables in `docker-compose.yaml`:
    cd agent-zero-docker
    ```
 
-2. **Build and start the container**:
+2. **Create required directories and files**:
    ```bash
-   docker compose up --build
+   # Create required directories
+   mkdir -p agent-zero-env agent-zero-logs agent-zero-config
+   
+   # Create the .env FILE (not directory) - this is critical!
+   touch agent-zero-env/.env
    ```
 
-3. **Access the web interface**:
+**⚠️ Common Error**: If you accidentally mount the `agent-zero-env` directory to `/root/agent-zero/.env` instead of the `.env` file, you'll get:
+```
+IsADirectoryError: [Errno 21] Is a directory: '/root/agent-zero/.env'
+```
+
+**✅ Correct volume mount**: `./agent-zero-env/.env:/root/agent-zero/.env` (file to file)  
+**❌ Incorrect volume mount**: `./agent-zero-env:/root/agent-zero/.env` (directory to file)
+
+3. **Choose your GPU type and build the container**:
+
+   **For NVIDIA GPUs:**
+   ```bash
+   docker compose -f docker-compose_nvidia.yaml up --build
+   ```
+
+   **For AMD GPUs:**
+   ```bash
+   docker compose -f docker-compose_amd.yaml up --build
+   ```
+
+4. **Access the web interface**:
    Open your browser and navigate to:
    ```
    http://localhost:55080
    ```
 
-4. **Configure Agent Zero**:
+5. **Configure Agent Zero**:
    - Set up your API keys in the Settings
    - Configure RFC settings:
      - RFC Destination URL: `http://localhost`
@@ -108,7 +120,7 @@ The container automatically configures SSH with:
 
 ### GPU Verification
 
-To verify GPU access within the container:
+**For NVIDIA GPUs:**
 ```bash
 # Execute into the running container
 docker exec -it agent-zero-cuda bash
@@ -118,6 +130,18 @@ nvidia-smi
 
 # Test with Python
 python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+```
+
+**For AMD GPUs:**
+```bash
+# Execute into the running container
+docker exec -it agent-zero-amd bash
+
+# Check GPU availability
+rocm-smi
+
+# Test with Python
+python -c "import torch; print(f'ROCm available: {torch.cuda.is_available()}')"
 ```
 
 ## 🔒 Security Considerations
@@ -131,22 +155,49 @@ python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
 
 ### Common Issues
 
-1. **Authentication Failed (SSH)**:
+1. **IsADirectoryError: [Errno 21] Is a directory: '/root/agent-zero/.env'**:
+   
+   **Cause**: The `.env` file wasn't created properly, or you're mounting a directory instead of a file.
+   
+   **Solution**:
+   ```bash
+   # Ensure the file exists as a FILE, not directory
+   touch agent-zero-env/.env
+   
+   # Verify it's a file, not a directory
+   ls -la agent-zero-env/
+   # Should show: -rw-r--r-- 1 user user size date .env
+   
+   # Check your docker-compose file has the CORRECT mount:
+   # ✅ Correct: - ./agent-zero-env/.env:/root/agent-zero/.env
+   # ❌ Wrong:   - ./agent-zero-env:/root/agent-zero/.env
+   ```
+
+2. **Authentication Failed (SSH)**:
    - Ensure RFC password is set in the web interface
    - Check that SSH service is running in the container
 
-2. **Bad Request Errors in Logs**:
+3. **Bad Request Errors in Logs**:
    - These are harmless SSL handshake attempts to HTTP server
    - Always use `http://` (not `https://`) when accessing the interface
 
-3. **GPU Not Available**:
+4. **GPU Not Available (NVIDIA)**:
    - Verify NVIDIA Docker runtime installation
    - Check GPU drivers on host system
-   - Ensure `--gpus all` flag is working
+   - Ensure NVIDIA Container Toolkit is properly installed
 
-4. **Configuration Not Persisting**:
-   - Verify volume mounts in docker-compose.yaml
+5. **GPU Not Available (AMD)**:
+   - Verify ROCm drivers are installed on host system
+   - Check that `/dev/kfd` and `/dev/dri` devices are accessible
+   - Ensure user is in the `video` group on host system
+
+6. **Configuration Not Persisting**:
+   - Verify volume mounts in docker-compose file
    - Check permissions on host directories
+   - Ensure `.env` file exists and is not a directory
+
+7. **First Time Boot**
+Note that on the first time Agent Zero is indexing and so it might take a long time until it responds the first time.
 
 ### Log Access
 
@@ -168,6 +219,8 @@ ls -la agent-zero-logs/
 ### Container Access
 
 Execute commands in the running container:
+
+**For NVIDIA containers:**
 ```bash
 # Get shell access
 docker exec -it agent-zero-cuda bash
@@ -176,25 +229,53 @@ docker exec -it agent-zero-cuda bash
 docker exec -it agent-zero-cuda ssh root@localhost -p 22
 ```
 
+**For AMD containers:**
+```bash
+# Get shell access
+docker exec -it agent-zero-amd bash
+
+# Test SSH connection (internal)
+docker exec -it agent-zero-amd ssh root@localhost -p 22
+```
+
 ## 🔄 Development Workflow
 
 ### Rebuilding
 
 When making changes to the Dockerfile:
+
+**For NVIDIA:**
 ```bash
 # Stop and rebuild
-docker compose down
-docker compose up --build
+docker compose -f docker-compose_nvidia.yaml down
+docker compose -f docker-compose_nvidia.yaml up --build
+```
+
+**For AMD:**
+```bash
+# Stop and rebuild
+docker compose -f docker-compose_amd.yaml down
+docker compose -f docker-compose_amd.yaml up --build
 ```
 
 ### Updating Agent Zero
 
 To update to the latest Agent Zero version:
+
+**For NVIDIA:**
 ```bash
 # Rebuild with fresh clone
-docker compose down
-docker compose build --no-cache
-docker compose up
+docker compose -f docker-compose_nvidia.yaml down
+docker compose -f docker-compose_nvidia.yaml build --no-cache
+docker compose -f docker-compose_nvidia.yaml up
+```
+
+**For AMD:**
+```bash
+# Rebuild with fresh clone
+docker compose -f docker-compose_amd.yaml down
+docker compose -f docker-compose_amd.yaml build --no-cache
+docker compose -f docker-compose_amd.yaml up
 ```
 
 ### Backup Configuration
@@ -214,13 +295,14 @@ tar -xzf agent-zero-backup.tar.gz
 - [Agent Zero Documentation](https://github.com/frdel/agent-zero/blob/main/docs/README.md)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [NVIDIA Docker Documentation](https://github.com/NVIDIA/nvidia-docker)
+- [AMD ROCm Documentation](https://rocm.docs.amd.com/en/latest/)
 
 ## 🤝 Contributing
 
 1. Fork this repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly with both NVIDIA and AMD configurations if possible
 5. Submit a pull request
 
 ## 📄 License
@@ -231,7 +313,15 @@ This project follows the same license as Agent Zero. See the [Agent Zero reposit
 
 If you encounter issues:
 
-1. Check the troubleshooting section above
-2. Review Agent Zero's official documentation
-3. Check Docker and NVIDIA Docker installation
-4. Open an issue in this repository with detailed logs
+1. **First, verify your setup**:
+   ```bash
+   # Check if .env file exists as a FILE (not directory)
+   ls -la agent-zero-env/.env
+   
+   # Should show file details, not "No such file or directory"
+   # If it shows as a directory, you have the wrong mount configuration
+   ```
+2. Check the troubleshooting section above
+3. Review Agent Zero's official documentation
+4. Check Docker and GPU driver installation (NVIDIA Container Toolkit or ROCm)
+5. Open an issue in this repository with detailed logs and specify your GPU type (NVIDIA/AMD)
