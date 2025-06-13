@@ -1,18 +1,7 @@
 # Agent Zero Docker - Git Ignore File
 
 # Ignore log files but keep the logs directory structure
-agent-zero-logs/*.html
-agent-zero-logs/*.log
-agent-zero-logs/*.txt
-
-agent-zero-config/chats
-agent-zero-config/scheduler
-
-# Ignore sensitive environment variables
-agent-zero-env
-
-# Docker related
-.dockerignore
+agent-zero-root/
 
 # IDE and Editor files
 .vscode/
